@@ -24,65 +24,82 @@ transport = RequestsHTTPTransport(
     use_json=True,
 )
 
-# GraphQL-запрос
-query = gql('''
-query Query {
-  search(storeId: 13, text: "Кофе") {
-    products(from: 0, size: 101) {
-      products {
-        id
-        name
-        url
-        manufacturer {
+def main(transport):
+    # Параметры запроса
+    store_id = 13  # id магазина
+    search_text = "Кофе"  # Название категории
+    base_url = "online.metro-cc.ru"
+
+    # GraphQL-запрос
+    query = gql('''
+    query Query($storeId: Int!, $text: String!) {
+      search(storeId: $storeId, text: $text) {
+        products(from: 0, size: 101) {
+          products {
+            id
             name
-        }
-        stocks {
-          prices {
-            price
-            old_price
-            discount
-            online_levels {
-                price
+            url
+            manufacturer {
+                name
             }
-            offline {
-              price
-              old_price
+            stocks {
+              prices {
+                price
+                old_price
+                discount
+                online_levels {
+                    price
+                }
+                offline {
+                  price
+                  old_price
+                }
+              }
             }
           }
         }
       }
     }
-  }
-}
-''')
-
-def main(transport, query):
+    ''')
 
     # Создаем клиент GraphQL
     client = Client(transport=transport, fetch_schema_from_transport=False)
 
-    # Выполнение GraphQL-запроса
-    result = client.execute(query)
+    try:
+        # Выполнение GraphQL-запроса
+        result = client.execute(query, variable_values={'storeId': store_id, 'text': search_text})
 
-    # Создание словаря для последующего сохранения в формате JSON
-    res = {'JSON': []}
+        # Создание словаря для последующего сохранения в формате JSON
+        res = {'JSON': []}
 
-    # Обход JSON
-    for product in result['search']['products']['products']:
-        # Добавление информации о продукте в словарь res (id, name, url, regular_price, promo_price, brand)
-        res['JSON'].append({'id': product['id'],
-                            'name': product['name'],
-                            'url': f'online.metro-cc.ru{product['url']}',
-                            'regular_price': product['stocks'][0]['prices']['old_price'] if
-                            product['stocks'][0]['prices']['old_price'] else product['stocks'][0]['prices']['price'],
-                            'promo_price': product['stocks'][0]['prices']['price'] if product['stocks'][0]['prices'][
-                                'old_price'] else None,
-                            'brand': product['manufacturer']['name']})
+        # Обход JSON
+        for product in result['search']['products']['products']:
+            # Проверка наличия необходимых данных
+            if 'id' in product and 'name' in product and 'url' in product and 'stocks' in product and len(
+                    product['stocks']) > 0:
+                prices = product['stocks'][0]['prices']
+                regular_price = prices['old_price'] if 'old_price' in prices else prices.get('price')
+                promo_price = prices['price'] if 'old_price' in prices else None
 
-    # Сохранение результата в файл JSON
-    with open('products.json', 'w') as file:
-        json.dump(res, file, indent=2)
+                # Добавление информации о продукте в словарь res (id, name, url, regular_price, promo_price, brand)
+                res['JSON'].append({
+                    'id': product['id'],
+                    'name': product['name'],
+                    'url': f"{base_url}{product['url']}",
+                    'regular_price': regular_price,
+                    'promo_price': promo_price,
+                    'brand': product['manufacturer']['name'] if 'manufacturer' in product else None
+                })
+
+        # Сохранение результата в файл JSON
+        with open('products.json', 'w') as file:
+            json.dump(res, file, indent=2)
+
+        logger.info("Данные успешно сохранены в файл products.json")
+
+    except Exception as e:
+        logger.error(f"Произошла ошибка: {str(e)}")
 
 if __name__ == '__main__':
     logger.info('Starting parser')
-    main(transport, query)
+    main(transport)
