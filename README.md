@@ -11,6 +11,12 @@
 
 Собранные данные сохраняются в JSON файл для дальнейшего использования.
 
+## Пример визуализации JSON
+
+Ниже приведен пример визуализации структуры JSON файла `products.json` с помощью сервиса https://jsonviewer.stack.hu:
+
+![JSON Viewer Screenshot](jsonexample.jpg)
+
 ## Требования
 
 - Python 3.12
