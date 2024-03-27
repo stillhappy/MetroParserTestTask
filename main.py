@@ -46,14 +46,6 @@ def main(transport):
               prices {
                 price
                 old_price
-                discount
-                online_levels {
-                    price
-                }
-                offline {
-                  price
-                  old_price
-                }
               }
             }
           }
